@@ -143,4 +143,10 @@ describe('middlewareRunner.run()', () => {
       expect(err).toEqual(new Error('howdy, texas'));
     }
   });
+  it('handles no middleware', async () => {
+    const middlewareRunner = new MiddlewareRunner([]);
+    const req = {} as Request;
+    const res = {} as Response;
+    expect(await middlewareRunner.run(req, res)).toEqual(null);
+  });
 });
