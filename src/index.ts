@@ -1,62 +1,55 @@
-import {
-  NextFunction as ExpressNextFunction,
-  Request,
-  RequestHandler as ExpressRequestHandler,
-  Response
-} from 'express';
-
-export interface NextFunction extends ExpressNextFunction {
-  (...params: any[]): void;
-}
-
-export interface RequestHandler extends ExpressRequestHandler {
-  (req: Request, res: Response, next: NextFunction): any;
-}
-
-export interface DeepArray<T> extends Array<T | DeepArray<T>> {}
+import { Request, Response } from 'express';
+import { RequestHandler, ErrorRequestHandler, DeepArray } from './types';
 
 export default class MiddlewareRunner<Result> {
   middlewares: RequestHandler[];
 
-  constructor(unflattenedMiddlewares: DeepArray<RequestHandler>) {
+  constructor(
+    unflattenedMiddlewares: DeepArray<RequestHandler | ErrorRequestHandler>
+  ) {
     this.middlewares = unflattenedMiddlewares.flat(Infinity);
   }
 
-  private async invoke(middleware: RequestHandler, handlerArgs: any[]) {
-    return new Promise(resolve => {
+  private async invoke(
+    middleware: RequestHandler | ErrorRequestHandler,
+    handlerArgs: any[]
+  ) {
+    return new Promise((resolve, reject) => {
       middleware.call(
         null,
         ...handlerArgs,
         // @ts-ignore
-        (...params: any[]) => {
+        (err?: Error, ...params: any[]) => {
+          if (err) return reject(err);
           if (!params.length) return resolve(null);
-          if (typeof params[0] === 'undefined' || params[0] === null) {
-            params.shift();
-            if (!params.length) return resolve(null);
-          }
-          return resolve(params.length === 1 ? params[0] : params);
+          if (params.length === 1) return resolve(params[0]);
+          return resolve(params);
         }
       );
     });
   }
 
-  async run(request: Request, response: Response): Promise<Result> {
+  async run(req: Request, res: Response): Promise<Result> {
     let promiseChain: Promise<any> = Promise.resolve();
-    this.middlewares.forEach((middleware: RequestHandler) => {
-      [
-        () => {},
-        () => {
-          promiseChain = promiseChain.then(() =>
-            this.invoke(middleware, [request, response])
-          );
-        },
-        () => {
-          promiseChain = promiseChain.catch((err: Error) =>
-            this.invoke(middleware, [err, request, response])
-          );
-        }
-      ][Math.max(Math.max(0, Math.min(2, middleware.length - 2)) || 0)]();
-    });
+    this.middlewares.forEach(
+      (middleware: RequestHandler | ErrorRequestHandler) => {
+        [
+          () => {},
+          () => {
+            promiseChain = promiseChain.then(() =>
+              this.invoke(middleware, [req, res])
+            );
+          },
+          () => {
+            promiseChain = promiseChain.catch((err: Error) =>
+              this.invoke(middleware, [err, req, res])
+            );
+          }
+        ][Math.max(Math.max(0, Math.min(2, middleware.length - 2)))]();
+      }
+    );
     return promiseChain as Promise<Result>;
   }
 }
+
+export * from './types';
