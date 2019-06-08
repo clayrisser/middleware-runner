@@ -1,0 +1,7 @@
+{
+  "extends": ["jam/typescript/base"],
+  "rules": {
+    "import/no-unresolved": "off",
+    "no-empty-function": "off"
+  }
+}
