@@ -30,6 +30,10 @@ export default class MiddlewareRunner<Result> {
         // @ts-ignore
         (...params: any[]) => {
           if (!params.length) return resolve(null);
+          if (typeof params[0] === 'undefined' || params[0] === null) {
+            params.shift();
+            if (!params.length) return resolve(null);
+          }
           return resolve(params.length === 1 ? params[0] : params);
         }
       );
