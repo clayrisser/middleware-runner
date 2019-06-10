@@ -1,42 +1,39 @@
 import { Request, Response } from 'express';
-import { RequestHandler, ErrorRequestHandler, DeepArray } from './types';
+import { Middlewares, Middleware } from './types';
 
 export default class MiddlewareRunner<Result> {
-  middlewares: RequestHandler[];
+  middlewares: Middleware[];
 
-  constructor(
-    unflattenedMiddlewares: DeepArray<RequestHandler | ErrorRequestHandler>
-  ) {
-    this.middlewares = unflattenedMiddlewares.flat(Infinity);
+  constructor(unflattenedMiddlewares: Middlewares) {
+    if (Array.isArray(unflattenedMiddlewares)) {
+      this.middlewares = unflattenedMiddlewares.flat(Infinity);
+    } else {
+      this.middlewares = [unflattenedMiddlewares];
+    }
   }
 
   async run(req: Request, res: Response): Promise<Result> {
     let promiseChain: Promise<any> = Promise.resolve(null);
-    this.middlewares.forEach(
-      (middleware: RequestHandler | ErrorRequestHandler) => {
-        [
-          () => {},
-          () => {
-            promiseChain = promiseChain.then(() =>
-              invoke(middleware, [req, res])
-            );
-          },
-          () => {
-            promiseChain = promiseChain.catch((err: Error) =>
-              invoke(middleware, [err, req, res])
-            );
-          }
-        ][Math.max(Math.max(0, Math.min(2, middleware.length - 2)))]();
-      }
-    );
+    this.middlewares.forEach((middleware: Middleware) => {
+      [
+        () => {},
+        () => {
+          promiseChain = promiseChain.then(() =>
+            invoke(middleware, [req, res])
+          );
+        },
+        () => {
+          promiseChain = promiseChain.catch((err: Error) =>
+            invoke(middleware, [err, req, res])
+          );
+        }
+      ][Math.max(Math.max(0, Math.min(2, middleware.length - 2)))]();
+    });
     return promiseChain as Promise<Result>;
   }
 }
 
-async function invoke(
-  middleware: RequestHandler | ErrorRequestHandler,
-  handlerArgs: any[]
-) {
+async function invoke(middleware: Middleware, handlerArgs: any[]) {
   return new Promise((resolve, reject) => {
     middleware.call(
       null,
@@ -50,6 +47,15 @@ async function invoke(
       }
     );
   });
+}
+
+export async function runMiddleware<Result>(
+  req: Request,
+  res: Response,
+  middlewares: Middlewares
+): Promise<Result> {
+  const middlewareRunner = new MiddlewareRunner<Result>(middlewares);
+  return middlewareRunner.run(req, res);
 }
 
 export * from './types';

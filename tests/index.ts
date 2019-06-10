@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import MiddlewareRunner, { NextFunction } from '../src';
+import MiddlewareRunner, { NextFunction, runMiddleware } from '../src';
 
 describe('new MiddlewareRunner(middlewares)', () => {
   it('creates an instance of a MiddlewareRunner', async () => {
@@ -8,7 +8,7 @@ describe('new MiddlewareRunner(middlewares)', () => {
   });
 });
 
-describe('middlewareRunner.run()', () => {
+describe('middlewareRunner.run(req, res)', () => {
   it('runs an instance of MiddlewareRunner', async () => {
     const middlewareRunner = new MiddlewareRunner([
       (_req: Request, _res: Response, next: NextFunction) => {
@@ -148,5 +148,21 @@ describe('middlewareRunner.run()', () => {
     const req = {} as Request;
     const res = {} as Response;
     expect(await middlewareRunner.run(req, res)).toEqual(null);
+  });
+});
+
+describe('runMiddleware(req, res, middlewares)', () => {
+  it('runs middleware', async () => {
+    const req = {} as Request;
+    const res = {} as Response;
+    expect(
+      await runMiddleware(
+        req,
+        res,
+        (_req: Request, _res: Response, next: NextFunction) => {
+          return next(null, 'hello');
+        }
+      )
+    ).toEqual('hello');
   });
 });
