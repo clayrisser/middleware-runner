@@ -1,14 +1,14 @@
 import { Request, Response } from 'express';
-import { Middlewares, Middleware } from './types';
+import { MiddlewareChain, Middleware } from './types';
 
 export default class MiddlewareRunner<Result> {
   middlewares: Middleware[];
 
-  constructor(unflattenedMiddlewares: Middlewares) {
-    if (Array.isArray(unflattenedMiddlewares)) {
-      this.middlewares = unflattenedMiddlewares.flat(Infinity);
+  constructor(middlewareChain: MiddlewareChain) {
+    if (Array.isArray(middlewareChain)) {
+      this.middlewares = middlewareChain.flat(Infinity);
     } else {
-      this.middlewares = [unflattenedMiddlewares];
+      this.middlewares = [middlewareChain];
     }
   }
 
@@ -52,9 +52,9 @@ async function invoke(middleware: Middleware, handlerArgs: any[]) {
 export async function runMiddleware<Result>(
   req: Request,
   res: Response,
-  middlewares: Middlewares
+  middlewareChain: MiddlewareChain
 ): Promise<Result> {
-  const middlewareRunner = new MiddlewareRunner<Result>(middlewares);
+  const middlewareRunner = new MiddlewareRunner<Result>(middlewareChain);
   return middlewareRunner.run(req, res);
 }
 

@@ -24,4 +24,4 @@ export interface DeepArray<T> extends Array<T | DeepArray<T>> {}
 
 export type Middleware = RequestHandler | ErrorRequestHandler;
 
-export type Middlewares = DeepArray<Middleware> | Middleware;
+export type MiddlewareChain = DeepArray<Middleware> | Middleware;
